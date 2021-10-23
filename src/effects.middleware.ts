@@ -21,12 +21,13 @@ import {
  */
 const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
   const initialData = action.data;
+  const initialType = action.initialType;
   let chainedActions: IEffectsAction[];
 
   if (Array.isArray(result)) {
     chainedActions = result
       .filter((resultItem) => resultItem instanceof EffectsAction)
-      .map((resultAction: IEffectsAction): IEffectsAction => ({...resultAction, initialData}));
+      .map((resultAction: IEffectsAction): IEffectsAction => ({...resultAction, initialData, initialType}));
 
     if (chainedActions.length > 0) {
       // Return chained effects actions
@@ -34,7 +35,7 @@ const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
     }
   } else if (result instanceof EffectsAction) {
     // Return chained effects action
-    return [{...result, initialData}];
+    return [{...result, initialData, initialType}];
   }
   return [
     // Default result done action
@@ -42,6 +43,7 @@ const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
       type: EffectsActionBuilder.buildDoneActionType(action.type),
       data: result,
       initialData,
+      initialType,
     }
   ];
 };
@@ -62,6 +64,7 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
     }
 
     const initialData = initialAction.data;
+    const initialType = initialAction.type;
     const proxyResult = proxy(initialAction);
     if (!isDefined(proxyResult)) {
       // Stop chaining. An effect does return nothing (!)
@@ -69,7 +72,7 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
     }
 
     const nextActionResult = next(initialAction);
-    const dispatchCallback = ($nextAction: IEffectsAction) => dispatch({...$nextAction, initialData});
+    const dispatchCallback = ($nextAction: IEffectsAction) => dispatch({...$nextAction, initialData, initialType});
     if (isPromiseLike(proxyResult)) {
       // Bluebird Promise supporting
       // An effect does return a promise object - we should build the async chain (!)
@@ -77,7 +80,7 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
       (proxyResult as Promise<{}>)
         .then(
           (result) => toActions(initialAction, result).forEach(dispatchCallback),
-          (error) => dispatch({type: EffectsActionBuilder.buildErrorActionType(initialAction.type), error, initialData})
+          (error) => dispatch({type: EffectsActionBuilder.buildErrorActionType(initialAction.type), error, initialData, initialType})
         );
     } else {
       toActions(initialAction, proxyResult).forEach(dispatchCallback);

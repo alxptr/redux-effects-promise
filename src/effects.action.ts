@@ -6,9 +6,10 @@ export class EffectsAction<TData = unknown> implements IEffectsAction {
     return new EffectsAction(type, data);
   }
 
-  public initialData?: unknown;
   public data?: TData;
   public error?: unknown;
+  public initialData?: unknown;
+  public initialType?: string;
   public type: string;
 
   constructor(type: string, data?: TData) {

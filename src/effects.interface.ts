@@ -10,6 +10,7 @@ export interface IEffectsAction<TData = unknown,
   data?: TData;
   error?: TError;
   initialData?: TInitialData;
+  initialType?: string;
 }
 
 /**
