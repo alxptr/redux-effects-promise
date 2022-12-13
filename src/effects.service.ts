@@ -6,6 +6,7 @@ import {
 } from 'ts-smart-logger';
 
 import { IEffectsAction } from './effects.interface';
+import { pushGlobalError } from './effects.utils';
 
 export class EffectsService {
 
@@ -73,6 +74,7 @@ export class EffectsService {
           return effectsFn.apply(proxyObject, args);
         } catch (error) {
           EffectsService.logger.error('[$EffectsService] The error:', error);
+          pushGlobalError(error);
           return {type: EffectsService.ERROR_ACTION_TYPE, error};
         }
       }

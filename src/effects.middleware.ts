@@ -1,4 +1,8 @@
 import { MiddlewareAPI } from 'redux';
+import {
+  ILogger,
+  LoggerFactory,
+} from 'ts-smart-logger';
 
 import { EffectsAction } from './effects.action';
 import { EffectsActionBuilder } from './effects-action.builder';
@@ -11,7 +15,10 @@ import {
   isDefined,
   isFn,
   isPromiseLike,
+  pushGlobalError,
 } from './effects.utils';
+
+const logger = LoggerFactory.makeLogger('effects.middleware');
 
 /**
  * @stable [10.01.2020]
@@ -80,7 +87,11 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
       (proxyResult as Promise<{}>)
         .then(
           (result) => toActions(initialAction, result).forEach(dispatchCallback),
-          (error) => dispatch({type: EffectsActionBuilder.buildErrorActionType(initialAction.type), error, initialData, initialType})
+          (error) => {
+            logger.error('[effectsMiddleware] The error:', error);
+            pushGlobalError(error);
+            dispatch({type: EffectsActionBuilder.buildErrorActionType(initialAction.type), error, initialData, initialType});
+          }
         );
     } else {
       toActions(initialAction, proxyResult).forEach(dispatchCallback);
