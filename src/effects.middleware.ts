@@ -62,16 +62,20 @@ const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
 export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
   (next: <TAction extends IEffectsAction>(action: TAction) => TAction) => <TAction extends IEffectsAction>(initialAction: TAction) => {
 
+    const asNextAction = () => (
+      /**
+       * Actually forward the action to the reducer
+       */
+      next(initialAction)
+    );
+
     const { dispatch } = payload as IEffectsMiddlewareAPI;
     const initialData = initialAction.data;
     const initialType = initialAction.type;
 
-    const proxy = EffectsService.fromEffectsMap(initialType);
-    const nextActionResult = next(initialAction);
-
-    if (!isFn(proxy)) {
-      // Native redux behavior (!)
-      return nextActionResult;
+    const effect = EffectsService.fromEffectsMap(initialType);
+    if (!isFn(effect)) {
+      return asNextAction();
     }
 
     const dispatchError = (error: Error) => {
@@ -86,35 +90,42 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
       });
     };
 
-    let proxyResult = null;
+    let effectResult = null;
     try {
-      proxyResult = proxy(initialAction);
+      /**
+       * We must call the effect necessarily before next(action) so that the effect gets the previous state,
+       * not the actual state - this is the pattern: the effect gets the previous state and the actual action
+       * that changes that state
+       */
+      effectResult = effect(initialAction);
     } catch (error) {
       logger.error('[effectsMiddleware] The error:', error);
 
+      const nextActionOnError = asNextAction();
       dispatchError(error);
 
-      // Chain stop. The effect returns nothing, because error (!)
-      return null;
+      return nextActionOnError;
     }
 
-    if (!isDefined(proxyResult)) {
+    if (!isDefined(effectResult)) {
       // Chain stop. The effect returns nothing (!)
-      return nextActionResult;
+      return asNextAction();
     }
 
     const dispatchCallback = ($nextAction: IEffectsAction) => dispatch({ ...$nextAction, initialData, initialType });
+    const nextAction = asNextAction();
 
-    if (isPromiseLike(proxyResult)) {
+    if (isPromiseLike(effectResult)) {
       // Bluebird Promise supporting
       // The effect returns a promise object - we must build an async (!) chain
 
-      proxyResult.then(
+      effectResult.then(
         (result) => toActions(initialAction, result).forEach(dispatchCallback),
         (error) => dispatchError(error)
       );
     } else {
-      toActions(initialAction, proxyResult).forEach(dispatchCallback);
+      toActions(initialAction, effectResult).forEach(dispatchCallback);
     }
-    return nextActionResult;
+
+    return nextAction;
   });
