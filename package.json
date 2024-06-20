@@ -9,7 +9,7 @@
     "build": "npm run tsc-build",
     "tsc-build": "npx tsc --p tsconfig.json",
     "lint": "node_modules/.bin/tslint --config tslint.json src/**/*.ts*",
-    "deploy": "npm install && npm run build && npm publish ./"
+    "deploy": "npm install --legacy-peer-deps && npm run build && npm publish ./"
   },
   "keywords": [
     "redux",
