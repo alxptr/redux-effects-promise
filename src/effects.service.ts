@@ -5,9 +5,6 @@ import {
   LoggerFactory,
 } from 'ts-smart-logger';
 
-import { IEffectsAction } from './effects.interface';
-import { pushGlobalError } from './effects.utils';
-
 export class EffectsService {
 
   /**
@@ -51,7 +48,6 @@ export class EffectsService {
 
   private static $IoCContainer: Container;
   private static readonly effectsMap = new Map<string, (...args) => {}>();
-  private static readonly ERROR_ACTION_TYPE = '$$-REP-unhandled.error';
   private static readonly logger = LoggerFactory.makeLogger(EffectsService);
   private static store: Store<{}>;
 
@@ -61,22 +57,16 @@ export class EffectsService {
    * @param {string} propertyKey
    * @param {{new(...args): void}} target
    */
-  private static addEffect(actionType: string, propertyKey: string, target: { new(...args): void }): void {
+  private static addEffect(actionType: string, propertyKey: string, target: { new(...args): void }) {
     this.effectsMap.set(
       actionType,
-      function(): IEffectsAction | IEffectsAction[] | Promise<IEffectsAction | IEffectsAction[]> {
+      function() {
         const proxyObject = EffectsService.$IoCContainer.get(target.constructor);
-        const effectsFn = Reflect.get(proxyObject, propertyKey) as (...args) => {};
+        const effectsFn = Reflect.get(proxyObject, propertyKey) as () => {};
         const currentState = EffectsService.store.getState();
         const args = [...Array.from(arguments), currentState];
 
-        try {
-          return effectsFn.apply(proxyObject, args);
-        } catch (error) {
-          EffectsService.logger.error('[$EffectsService] The error:', error);
-          pushGlobalError(error);
-          return {type: EffectsService.ERROR_ACTION_TYPE, error};
-        }
+        return effectsFn.apply(proxyObject, args);
       }
     );
   }

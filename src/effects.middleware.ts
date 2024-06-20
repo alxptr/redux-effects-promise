@@ -64,21 +64,34 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
     const { dispatch } = payload as IEffectsMiddlewareAPI;
     const proxy = EffectsService.fromEffectsMap(initialAction.type);
 
+    const nextActionResult = next(initialAction);
+
     if (!isFn(proxy)) {
       // Native redux behavior (!)
-      return next(initialAction);
+      return nextActionResult;
     }
 
     const initialData = initialAction.data;
     const initialType = initialAction.type;
-    const proxyResult = proxy(initialAction);
-    if (!isDefined(proxyResult)) {
-      // Stop chaining. An effect does return nothing (!)
-      return next(initialAction);
+    let proxyResult;
+
+    try {
+      proxyResult = proxy(initialAction);
+    } catch (error) {
+      logger.error('[effectsMiddleware] The error:', error);
+      pushGlobalError(error);
+
+      // Chain stop. The effect returns nothing, because error (!)
+      return nextActionResult;
     }
 
-    const nextActionResult = next(initialAction);
+    if (!isDefined(proxyResult)) {
+      // Chain stop. The effect returns nothing (!)
+      return nextActionResult;
+    }
+
     const dispatchCallback = ($nextAction: IEffectsAction) => dispatch({ ...$nextAction, initialData, initialType });
+
     if (isPromiseLike(proxyResult)) {
       // Bluebird Promise supporting
       // An effect does return a promise object - we should build the async chain (!)

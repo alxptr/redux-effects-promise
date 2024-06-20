@@ -8,18 +8,16 @@ import { EFFECTS_GLOBAL_ERROR_HOOK_NAME } from './effects.interface';
 export const isFn = (value: any): boolean => typeof value === 'function';
 
 /**
- * @stable [10.01.2020]
- * @param {AnyT} value
- * @returns {boolean}
+ * @stable [20.06.2024]
+ * @param value
  */
-export const isUndef = (value: any): boolean => typeof value === 'undefined';
+export const isUndef = <TValue>(value: TValue) => typeof value === 'undefined';
 
 /**
- * @stable [10.01.2020]
+ * @stable [20.06.2024]
  * @param value
- * @returns {boolean}
  */
-export const isNil = (value: any): boolean => value === null;
+export const isNil = <TValue>(value: TValue) => value === null;
 
 /**
  * @stable [10.01.2020]
