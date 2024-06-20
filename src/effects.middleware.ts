@@ -34,7 +34,7 @@ const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
   if (Array.isArray(result)) {
     chainedActions = result
       .filter((resultItem) => resultItem instanceof EffectsAction)
-      .map((resultAction: IEffectsAction): IEffectsAction => ({...resultAction, initialData, initialType}));
+      .map((resultAction: IEffectsAction): IEffectsAction => ({ ...resultAction, initialData, initialType }));
 
     if (chainedActions.length > 0) {
       // Return chained effects actions
@@ -42,7 +42,7 @@ const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
     }
   } else if (result instanceof EffectsAction) {
     // Return chained effects action
-    return [{...result, initialData, initialType}];
+    return [{ ...result, initialData, initialType }];
   }
   return [
     // Default result done action
@@ -56,13 +56,12 @@ const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
 };
 
 /**
- * @stable [10.01.2020]
- * @param {MiddlewareAPI<TState>} payload
- * @returns {(next: (action: IEffectsAction) => IEffectsAction) => (initialAction: IEffectsAction) => (IEffectsAction | undefined)}
+ * @stable [20.06.2024]
+ * @param payload
  */
 export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
   (next: <TAction extends IEffectsAction>(action: TAction) => TAction) => <TAction extends IEffectsAction>(initialAction: TAction) => {
-    const {dispatch} = payload as IEffectsMiddlewareAPI;
+    const { dispatch } = payload as IEffectsMiddlewareAPI;
     const proxy = EffectsService.fromEffectsMap(initialAction.type);
 
     if (!isFn(proxy)) {
@@ -79,7 +78,7 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
     }
 
     const nextActionResult = next(initialAction);
-    const dispatchCallback = ($nextAction: IEffectsAction) => dispatch({...$nextAction, initialData, initialType});
+    const dispatchCallback = ($nextAction: IEffectsAction) => dispatch({ ...$nextAction, initialData, initialType });
     if (isPromiseLike(proxyResult)) {
       // Bluebird Promise supporting
       // An effect does return a promise object - we should build the async chain (!)
@@ -90,7 +89,13 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
           (error) => {
             logger.error('[effectsMiddleware] The error:', error);
             pushGlobalError(error);
-            dispatch({type: EffectsActionBuilder.buildErrorActionType(initialAction.type), error, initialData, initialType});
+
+            dispatch({
+              type: EffectsActionBuilder.buildErrorActionType(initialAction.type),
+              error,
+              initialData,
+              initialType,
+            });
           }
         );
     } else {
