@@ -61,9 +61,12 @@ const toActions = (action: IEffectsAction, result): IEffectsAction[] => {
  */
 export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
   (next: <TAction extends IEffectsAction>(action: TAction) => TAction) => <TAction extends IEffectsAction>(initialAction: TAction) => {
-    const { dispatch } = payload as IEffectsMiddlewareAPI;
-    const proxy = EffectsService.fromEffectsMap(initialAction.type);
 
+    const { dispatch } = payload as IEffectsMiddlewareAPI;
+    const initialData = initialAction.data;
+    const initialType = initialAction.type;
+
+    const proxy = EffectsService.fromEffectsMap(initialType);
     const nextActionResult = next(initialAction);
 
     if (!isFn(proxy)) {
@@ -71,18 +74,28 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
       return nextActionResult;
     }
 
-    const initialData = initialAction.data;
-    const initialType = initialAction.type;
-    let proxyResult;
+    const dispatchError = (error: Error) => {
+      logger.error('[effectsMiddleware] The error:', error);
+      pushGlobalError(error);
 
+      dispatch({
+        type: EffectsActionBuilder.buildErrorActionType(initialType),
+        error,
+        initialData,
+        initialType,
+      });
+    };
+
+    let proxyResult = null;
     try {
       proxyResult = proxy(initialAction);
     } catch (error) {
       logger.error('[effectsMiddleware] The error:', error);
-      pushGlobalError(error);
+
+      dispatchError(error);
 
       // Chain stop. The effect returns nothing, because error (!)
-      return nextActionResult;
+      return null;
     }
 
     if (!isDefined(proxyResult)) {
@@ -94,23 +107,12 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
 
     if (isPromiseLike(proxyResult)) {
       // Bluebird Promise supporting
-      // An effect does return a promise object - we should build the async chain (!)
+      // The effect returns a promise object - we must build an async (!) chain
 
-      (proxyResult as Promise<{}>)
-        .then(
-          (result) => toActions(initialAction, result).forEach(dispatchCallback),
-          (error) => {
-            logger.error('[effectsMiddleware] The error:', error);
-            pushGlobalError(error);
-
-            dispatch({
-              type: EffectsActionBuilder.buildErrorActionType(initialAction.type),
-              error,
-              initialData,
-              initialType,
-            });
-          }
-        );
+      proxyResult.then(
+        (result) => toActions(initialAction, result).forEach(dispatchCallback),
+        (error) => dispatchError(error)
+      );
     } else {
       toActions(initialAction, proxyResult).forEach(dispatchCallback);
     }

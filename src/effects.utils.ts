@@ -42,7 +42,7 @@ export const pushGlobalError = (error: Error): void => {
  * @param value
  * @returns {boolean}
  */
-export const isPromiseLike = (value: any): boolean =>
+export const isPromiseLike = (value: any): value is Promise<unknown> =>
   value instanceof Promise || (
     isDefined(value) && isFn(value.then) && isFn(value.catch)
   );
