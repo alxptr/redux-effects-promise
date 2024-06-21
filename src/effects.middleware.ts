@@ -99,11 +99,8 @@ export const effectsMiddleware = <TState>(payload: MiddlewareAPI<TState>) => (
        */
       effectResult = effect(initialAction);
     } catch (error) {
-      logger.error('[effectsMiddleware] The error:', error);
-
       const nextActionOnError = asNextAction();
       dispatchError(error);
-
       return nextActionOnError;
     }
 
