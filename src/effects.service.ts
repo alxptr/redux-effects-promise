@@ -5,25 +5,30 @@ import {
   LoggerFactory,
 } from 'ts-smart-logger';
 
+import { isDefined } from './effects.utils';
+
 export class EffectsService {
 
   /**
    * @stable [15.03.2020]
-   * @param {string} actionType
+   * @param {string} actionTypeOrConfig
    * @param {boolean} override
    * @returns {(...args) => void}
    */
-  public static effects(actionType: string, override = false): (...args) => void {
+  public static effects(actionTypeOrConfig: string | null | undefined, override = false): (...args) => void {
+    if (!isDefined(actionTypeOrConfig)) {
+      throw new Error(`The configuration is not defined...`);
+    }
     return (target: { new(...args): void }, propertyKey: string): void => {
-      if (this.effectsMap.has(actionType)) {
+      if (this.effectsMap.has(actionTypeOrConfig)) {
         if (override) {
-          this.logger.debug(`[$EffectsService] An effect does already exist for the action type ${actionType}. Will be overridden..`);
+          this.logger.debug(`[$EffectsService] An effect does already exist for the action type ${actionTypeOrConfig}. Will be overridden..`);
         } else {
-          this.logger.warn(`[$EffectsService] An effect does already exist for the action type ${actionType}. Exit...`);
+          this.logger.warn(`[$EffectsService] An effect does already exist for the action type ${actionTypeOrConfig}. Exit...`);
           return;
         }
       }
-      this.addEffect(actionType, propertyKey, target);
+      this.addEffect(actionTypeOrConfig, propertyKey, target);
     };
   }
 
